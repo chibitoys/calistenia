@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e0f12">
+<title>Calistenia — meu treino</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calistenia">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"></div>
+<div id="timer"><div class="t" id="tt">0:00</div><div class="l grow" id="tl">Descanso</div><button data-act="t-add">+15 s</button><button data-act="t-skip">Pular</button></div>
+<nav class="tabs"><div class="in" id="tabs"></div></nav>
+<div id="sheet"><div class="bg" data-act="sheet-close"></div><div class="pane"><div class="grab"></div><div id="sheet-in"></div></div></div>
+<script src="js/data.js"></script>
+<script src="media/manifest.js"></script>
+<script src="js/anim.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
