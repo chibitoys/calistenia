@@ -329,6 +329,27 @@ defF('ext_rot', { band: true, keys: [Object.assign({}, stand, { hl: [106, 112], 
 /* cossack e lat_leg_swing: só existem de frente */
 ['cossack', 'lat_leg_swing', 'archer_pushup'].forEach(id => { ANIMF[id].pref = true; });
 
+
+/* ——— cardio: caminhada, trote, desaceleração, rotação de tornozelo (ciclos de passada) ——— */
+const gait = (dur, arm) => [
+  { hip: [128, 82], a: 90, foot: [152, 4], foot2: [102, 4], hr: [-16, -46 + arm], hr2: [18, -44 + arm], h: 0, d: dur, hold: 0 },
+  { hip: [128, 86], a: 90, foot: [128, 4], foot2: [132, 26], hr: [2, -50 + arm], hr2: [2, -50 + arm], d: dur, hold: 0 },
+  { hip: [128, 82], a: 90, foot: [102, 4], foot2: [152, 4], hr: [18, -44 + arm], hr2: [-16, -46 + arm], d: dur, hold: 0 },
+  { hip: [128, 86], a: 90, foot: [132, 26], foot2: [128, 4], hr: [2, -50 + arm], hr2: [2, -50 + arm], d: dur, hold: 0 },
+];
+def('brisk_walk', { keys: gait(.3, 14), hl: ['leg'] });
+def('cool_walk', { keys: gait(.55, 0), hl: ['leg'] });
+def('easy_jog', {
+  keys: [{ hip: [128, 80], a: 86, foot: [150, 4], foot2: [98, 40], hr: [-14, -30], hr2: [24, -26], h: 0, d: .2, hold: 0 },
+         { hip: [128, 92], a: 86, foot: [122, 14], foot2: [142, 36], hr: [4, -30], hr2: [4, -30], d: .2, hold: 0 },
+         { hip: [128, 80], a: 86, foot: [98, 40], foot2: [150, 4], hr: [24, -26], hr2: [-14, -30], d: .2, hold: 0 },
+         { hip: [128, 92], a: 86, foot: [142, 36], foot2: [122, 14], hr: [4, -30], hr2: [4, -30], d: .2, hold: 0 }],
+  hl: ['leg'],
+});
+def('ankle_rot', {
+  keys: ring(8, 9, Math.PI / 2).map((p, i) => Object.assign(i ? {} : { hip: [128, 92], a: 90, foot: [128, 6], hand: [168, 100], h: 0 }, { foot2: [136 + p[0], 22 + p[1]], d: .3, hold: 0 })),
+  props: [{ t: 'post', x: 168, h: 118 }], hl: ['leg'],
+});
 /* ───────── desenho ───────── */
 const Y = u => G - u, f1 = n => Math.round(n * 10) / 10;
 const pts = a => a.map(p => `${f1(p[0])},${f1(Y(p[1]))}`).join(' ');

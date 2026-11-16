@@ -182,3 +182,27 @@ svg.chart{width:100%;height:auto;display:block}
 .gcard{background:var(--surf);border-radius:16px;padding:8px;margin:8px 0;box-shadow:var(--shadow);cursor:pointer}
 .gfr{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px}
 .gfr svg{display:block;width:100%;height:auto;background:var(--surf2);border-radius:10px}
+
+/* ───── cardio ───── */
+.bigtime{font-size:76px;font-weight:800;text-align:center;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1;margin:14px 0 4px}
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 6px}
+.statgrid>div{background:var(--surf);border-radius:16px;padding:12px;text-align:center;box-shadow:var(--shadow)}
+.statgrid b{display:block;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.statgrid span{font-size:12px;color:var(--mut)}
+.statgrid.flat{margin:8px 0}.statgrid.flat>div{background:var(--surf2);box-shadow:none}
+.gpschip{display:inline-block;font-size:12.5px;padding:3px 10px;border-radius:99px;background:var(--surf2);color:var(--mut);font-weight:600}
+.gpschip.ok{background:color-mix(in srgb,var(--ok) 20%,var(--surf));color:var(--ok)}
+.gpschip.warn{background:color-mix(in srgb,var(--warn) 22%,var(--surf));color:var(--warn)}
+.gpschip.bad{background:color-mix(in srgb,var(--bad) 18%,var(--surf));color:var(--bad)}
+.prow{margin-top:10px}
+.p5{display:flex;gap:6px;margin-top:4px}
+.p5 button{flex:1;padding:10px 0;border-radius:12px;background:var(--surf2);font-size:18px}
+.p5 button.on{background:var(--ink);color:var(--bg);font-weight:700}
+.rpes{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.rpes button{flex:1;min-width:26px;padding:10px 0;border-radius:10px;background:var(--surf2);font-weight:700}
+.rpes button.on{background:var(--ink);color:var(--bg)}
+svg.route{width:100%;height:auto;display:block;background:var(--surf2);border-radius:14px;margin-top:10px}
+.eco{position:fixed;inset:0;background:#000;color:#fff;z-index:50;display:grid;place-items:center;text-align:center}
+.eco-t{font-size:88px;font-weight:800;font-variant-numeric:tabular-nums;color:#d9d9d9}
+.eco-d{font-size:40px;font-weight:700;color:#aaa;margin-top:6px}
+.eco-h{margin-top:30px;color:#555;font-size:14px}

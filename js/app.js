@@ -11,12 +11,18 @@ const ICON = {
   prog: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
   learn: '<path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10c1 1 1 2 1 3h6c0-1 0-2 1-3a6 6 0 00-4-10z"/>',
   set: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+  cardio: '<circle cx="14" cy="4.5" r="2"/><path d="M6 21l3-6 3 2 2-5-3-3-4 1-2 3M12 11l4 3h3"/>',
+  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
 };
-const TABS = [['today', 'Hoje'], ['lib', 'Biblioteca'], ['prog', 'Evolução'], ['learn', 'Aprender'], ['set', 'Ajustes']];
+const TABS = [['today', 'Hoje'], ['cardio', 'Cardio'], ['lib', 'Biblioteca'], ['prog', 'Evolução'], ['more', 'Mais']];
+const TABGROUP = { work: 'today', learn: 'more', set: 'more', gallery: 'more', diary: 'more', cstart: 'cardio', track: 'cardio', sum: 'cardio', routine: 'cardio' };
+const X = {}, VIEWS = {}, AFTER = [];   /* pontos de extensão (js/cardio-ui.js) */
 
 /* ───────── armazenamento ───────── */
-const defaults = () => ({ v: 1, set: { name: '', test: true, phase: 'w1', onboarded: false, dips: false, lowBar: false, theme: 'auto' }, logs: [], morning: {}, walks: {}, active: null });
-let DB = (() => { try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && d.v) { const b = defaults(); return { ...b, ...d, set: { ...b.set, ...d.set } }; } } catch (e) {} return defaults(); })();
+const defaults = () => ({ v: 1, set: { name: '', test: true, phase: 'w1', onboarded: false, dips: false, lowBar: false, theme: 'auto' }, logs: [], morning: {}, walks: {}, active: null, acts: [], notes: [], cardio: { stage: 'r1', runDays: [1, 4], weightKg: null, voice: true, voiceEvery: 'km', runGps: true, walkGps: false } });
+const normDB = d => { const b = defaults(); return { ...b, ...d, set: { ...b.set, ...d.set }, cardio: { ...b.cardio, ...(d.cardio || {}) }, acts: Array.isArray(d.acts) ? d.acts : [], notes: Array.isArray(d.notes) ? d.notes : [] }; };
+let DB = (() => { try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && d.v) return normDB(d); } catch (e) {} return defaults(); })();
+(function migrate() { const w = DB.walks || {}, ks = Object.keys(w); if (!ks.length) return; ks.forEach(k => { const m = +w[k]; if (m > 0) { const st = new Date(k + 'T08:00:00').getTime(); DB.acts.push({ id: st + Math.floor(Math.random() * 1000), type: 'walk', date: k, start: st, end: st + m * 60000, dur: m * 60, source: 'manual', moving: null, dist: null }); } }); DB.walks = {}; DB.acts.sort((a, b) => a.start - b.start); try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} })();
 let storageOk = true;
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { if (storageOk) { storageOk = false; toast('Não consegui salvar neste navegador. Exporte um backup.'); } } };
 const UI = { fv: {}, hold: { run: false }, tab: 'today', libCat: 'all', libQ: '', progEx: null, ready: 'g', pick: null, ab: null, gloss: '', open: {} };
@@ -158,8 +164,6 @@ function vToday() {
   const last = DB.logs[DB.logs.length - 1];
   const todayDone = DB.logs.some(l => l.date === today());
   const mDone = DB.morning[today()] || {};
-  const walkToday = DB.walks[today()] || 0;
-  const walkWeek = Object.entries(DB.walks).filter(([d]) => new Date(d + 'T12:00') >= ws).reduce((s, [, v]) => s + v, 0);
   const colors = { push: ['#e8562a', '#ff9a5a'], pull: ['#2f6fe0', '#5ab0ff'], legs: ['#1f8f5a', '#6fd38d'] }[type];
   const hr = new Date().getHours();
   const greet = hr < 12 ? 'Bom dia' : hr < 18 ? 'Boa tarde' : 'Boa noite';
@@ -168,6 +172,8 @@ function vToday() {
   <div class="top"><div><div class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</div><h1>${greet}, ${esc(DB.set.name || 'atleta')} 👋</h1></div></div>
   ${DB.set.test ? `<div class="hint down" style="margin:0 0 8px"><b>Modo teste:</b> treinos concluídos não entram no histórico nem na evolução. <button class="link" data-act="tog" data-k="test">Desligar</button></div>` : ''}
   <div class="chips"><span class="chip sel">${ph.n} · ${ph.sub}</span><span class="chip">RIR ${ph.rir}</span><span class="chip">Séries: ${ph.sets}</span></div>
+  ${X.todayMorning ? X.todayMorning() : ''}
+  <div class="eyebrow" style="margin:16px 2px 0">🌤 Tarde · Calistenia</div>
   ${a ? `<div class="hero" style="--c1:#1c1b19;--c2:#3a3833"><div class="eyebrow" style="color:#ffffffaa">Em andamento</div><h2>${SESSION_META[a.type].n}${a.ab ? ' ' + a.ab : ''}</h2><p class="sm">Iniciado às ${new Date(a.start).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}. Tudo foi salvo.</p><button class="btn gap" data-act="go-work">Continuar treino</button></div>` : `
   <div class="hero" style="--c1:${colors[0]};--c2:${colors[1]}">
     <div class="eyebrow" style="color:#ffffffcc">${UI.pick ? 'Sessão escolhida' : 'Próxima sessão sugerida'}</div>
@@ -177,6 +183,7 @@ function vToday() {
     <div class="gap">${plan.ex.map(e => `<div class="row between sm" style="padding:3px 0;gap:10px"><div class="th" style="width:64px;background:#ffffff33">${window.Anim && Anim.has(e.id) ? Anim.svg(e.id, { still: true }) : ''}</div><span class="grow">${esc(nameOf(e.id))}</span><b>${e.sets === (e.setsMin || e.sets) ? e.sets : e.setsMin + '–' + e.sets}×${e.reps}${(e.unit || EX[e.id].unit) === 's' ? ' s' : ''}</b></div>`).join('')}</div>
   </div>
   ${soft ? `<div class="hint down">Na readaptação, prefira intercalar os treinos com descanso ou caminhada (ex.: dias 1, 3 e 5). Se sentir-se recuperado, tudo bem.</div>` : ''}
+  ${X.legsHint ? X.legsHint(type) : ''}
   ${plan.derived ? `<div class="hint">Esta sessão de readaptação foi derivada do plano V2 (menos séries, RIR alto). O plano só detalha o Push da semana 1.</div>` : ''}
   <div class="card"><div class="eyebrow">Como você está hoje?</div>
     <div class="ready gap">${[['g', '🟢', 'Bem', 'g'], ['y', '🟡', 'Cansado', 'y'], ['r', '🔴', 'Algo errado', 'r']].map(([k, e, t, c]) => `<button class="${c} ${UI.ready === k ? 'on' : ''}" data-act="ready" data-k="${k}"><span class="e">${e}</span><span>${t}</span></button>`).join('')}</div>
@@ -187,14 +194,11 @@ function vToday() {
   </div>`}
   ${todayDone && !a ? `<div class="hint up">✔ Você já treinou hoje. Não compense sessões acumulando volume.</div>` : ''}
 
-  <div class="card"><div class="row between"><h3>Esta semana</h3><span class="xs mut">${wk.length} sessão(ões) de força · ${walkWeek} min de caminhada</span></div>
-    <div class="row gap" style="justify-content:space-between">${['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((d, i) => { const dt = new Date(ws); dt.setDate(dt.getDate() + i); const k = ymd(dt); const l = wk.find(x => x.date === k); const w = DB.walks[k]; const isT = k === today();
-      return `<div style="text-align:center;flex:1"><div class="xs mut">${d}</div><div class="tile" style="margin:4px auto;width:36px;height:36px;border-radius:50%;background:${l ? catColor(l.type) : w ? 'var(--surf2)' : 'transparent'};border:2px solid ${isT ? 'var(--acc)' : 'var(--line)'};color:${w && !l ? 'var(--mut)' : '#fff'};font-size:12px">${l ? SESSION_META[l.type].n[0] : w ? '🚶' : ''}</div></div>`; }).join('')}</div>
-    <p class="xs mut">Dias extras são opcionais. Domingo é descanso.</p>
+  <div class="card"><div class="row between"><h3>Esta semana</h3><span class="xs mut">${wk.length} sessão(ões) de força${X.weekSummary ? ' · ' + X.weekSummary() : ''}</span></div>
+    <div class="row gap" style="justify-content:space-between">${['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((d, i) => { const dt = new Date(ws); dt.setDate(dt.getDate() + i); const k = ymd(dt); const l = wk.find(x => x.date === k); const w = X.weekMark ? X.weekMark(k) : ''; const isT = k === today();
+      return `<div style="text-align:center;flex:1"><div class="xs mut">${d}</div><div class="tile" style="margin:4px auto;width:36px;height:36px;border-radius:50%;background:${l ? catColor(l.type) : w ? 'var(--surf2)' : 'transparent'};border:2px solid ${isT ? 'var(--acc)' : 'var(--line)'};color:${w && !l ? 'var(--mut)' : '#fff'};font-size:12px">${l ? SESSION_META[l.type].n[0] : w}</div></div>`; }).join('')}</div>
+    <p class="xs mut">Dias extras são opcionais. Corrida e caminhada aparecem como 🏃 e 🚶. Domingo é descanso.</p>
   </div>
-
-  <div class="card"><div class="row between"><div><h3>Caminhada / cardio</h3><div class="xs mut">Meta da fase: ${ph.cardio}, ritmo conversável.</div></div><b>${walkToday} min</b></div>
-    <div class="row gap wrap">${[10, 15, 20, 30].map(m => `<button class="btn ghost sm" data-act="walk" data-m="${m}">+${m}</button>`).join('')}${walkToday ? `<button class="btn ghost sm" data-act="walk" data-m="0">zerar hoje</button>` : ''}</div></div>
 
   <details class="card" data-d="morning" ${(UI.open.morning ?? Object.keys(mDone).length) ? 'open' : ''}><summary>Rotina matinal opcional · 6–10 min · esforço 2–3/10 <span class="xs mut">(${Object.keys(mDone).length}/${MORNING.length})</span></summary>
     <p class="xs mut">Sem fadigar para o resto do dia. Não é treino de força.</p>
@@ -360,7 +364,9 @@ function chart(pts, unit) {
   return `<svg class="chart" viewBox="0 0 ${W} ${H}"><polyline fill="none" stroke="var(--acc)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${pts.map((q, i) => X(i) + ',' + Y(q.y)).join(' ')}"/>
   ${pts.map((q, i) => `<circle cx="${X(i)}" cy="${Y(q.y)}" r="4.5" fill="var(--acc)"/><text x="${X(i)}" y="${Y(q.y) - 9}" font-size="11" text-anchor="middle" fill="var(--ink)">${q.y}</text><text x="${X(i)}" y="${H - 4}" font-size="9.5" text-anchor="middle" fill="var(--mut)">${q.d}</text>`).join('')}</svg>`;
 }
-function vProg() {
+const progSeg = () => `<div class="seg" style="margin-bottom:6px"><button class="${UI.progSeg !== 'cardio' ? 'on' : ''}" data-act="pseg" data-k="forca">Força</button><button class="${UI.progSeg === 'cardio' ? 'on' : ''}" data-act="pseg" data-k="cardio">Cardio</button></div>`;
+function vProg() { if (UI.progSeg === 'cardio' && X.progCardio) return `<div class="top"><div><h1>Evolução</h1><div class="sub">Corrida e caminhada · só o que você registrou</div></div></div>${progSeg()}${X.progCardio()}`; return vProgForca(); }
+function vProgForca() {
   const logs = DB.logs, ws = weekStart();
   const wk = logs.filter(l => new Date(l.date + 'T12:00') >= ws).length;
   const weeks = new Set(logs.map(l => ymd(weekStart(new Date(l.date + 'T12:00'))))); let streak = 0; const c = weekStart(); if (!weeks.has(ymd(c))) c.setDate(c.getDate() - 7); while (weeks.has(ymd(c))) { streak++; c.setDate(c.getDate() - 7); }
@@ -371,7 +377,7 @@ function vProg() {
   const pts = UI.progEx ? history(UI.progEx).reverse().map(h => ({ y: Math.max(...doneSets(h.ex).map(s => +s.v)), d: fmtDate(h.log.date, { day: '2-digit', month: '2-digit' }) })).filter(p => isFinite(p.y)) : [];
   const techs = UI.progEx ? history(UI.progEx).reverse().map(h => h.ex.tech).filter(Boolean) : [];
   const goals = GOALS.map(g => { let b = 0; g.ids.forEach(id => history(id).forEach(h => { if (!g.variants.includes(h.ex.variant) && h.ex.variant !== '') return; if (h.ex.variant === '' && id !== 'pushup') return; doneSets(h.ex).forEach(s => { b = Math.max(b, +s.v || 0); }); })); return { ...g, b }; });
-  return `<div class="top"><div><h1>Evolução</h1><div class="sub">Só o que você registrou, sem números inventados</div></div></div>
+  return `<div class="top"><div><h1>Evolução</h1><div class="sub">Só o que você registrou, sem números inventados</div></div></div>${progSeg()}
   <div class="row"><div class="stat"><b>${logs.length}</b><span class="xs mut">sessões</span></div><div class="stat"><b>${wk}</b><span class="xs mut">nesta semana</span></div><div class="stat"><b>${streak}</b><span class="xs mut">sem. seguidas</span></div></div>
   <div class="card"><h3>Volume — últimos 7 dias</h3><p class="xs mut">Séries feitas por padrão. Alvo = referência da <b>reconstrução</b>; na readaptação o volume é menor de propósito. Séries unilaterais contam por lado.</p>
    ${Object.entries(PATTERNS).map(([k, p]) => { const v = vol[k] || 0; return `<div class="gap"><div class="row between sm"><span>${p.n}</span><b>${v}<span class="mut">/${p.t}</span></b></div><div class="bar"><i style="width:${Math.min(100, v / p.t * 100)}%;${v > p.t ? 'background:var(--warn)' : ''}"></i></div></div>`; }).join('')}</div>
@@ -392,6 +398,14 @@ function logSheet(id) {
   <button class="btn ghost big gap" data-act="dellog" data-id="${l.id}" style="color:var(--bad)">Apagar este treino</button><button class="btn big gap" data-act="sheet-close">Fechar</button>`);
 }
 
+/* menu Mais */
+function vMore() {
+  const item = (k, ico, t, d) => `<div class="card li" style="margin:10px 0" data-act="tab" data-k="${k}"><div class="tile" style="background:var(--surf2);color:var(--ink);font-size:22px">${ico}</div><div class="grow"><div style="font-weight:700">${t}</div><div class="xs mut">${d}</div></div><span class="mut">›</span></div>`;
+  return `<div class="top"><div><h1>Mais</h1><div class="sub">Diário, aprendizado e ajustes</div></div></div>
+  ${item('diary', '📓', 'Diário', 'Pensamentos, ideias e aprendizados')}${item('learn', '💡', 'Aprender', 'RIR, escápulas, corrida, glossário e fontes')}${item('gallery', '🖼', 'Galeria de ilustrações', 'Todos os bonequinhos, início e fim de cada movimento')}${item('set', '⚙️', 'Ajustes', 'Fase, equipamento, cardio, backup e aparência')}
+  <p class="xs mut">${DB.logs.length} treinos de força · ${DB.acts.length} atividades de cardio salvos neste aparelho.</p>`;
+}
+
 /* galeria: todos os desenhos, quadro inicial e final (para conferir) */
 function vGallery() {
   const ids = Object.keys(EX), nA = ids.filter(id => Anim.has(id)).length;
@@ -402,7 +416,7 @@ function vGallery() {
       return `<div class="gcard" data-act="ex" data-id="${id}"><div class="gfr">${Anim.has(id) ? Anim.svg(id, { key: 0, view: v }) + Anim.svg(id, { key: 1, view: v }) : '<div class="demo-fb" style="grid-column:1/3;padding:20px"><span class="sm mut">Sem ilustração</span></div>'}</div><div class="row between"><b>${esc(EX[id].en)}</b><span class="xs mut">${esc(EX[id].pt)}</span></div></div>`;
     }).join('');
   }).join('');
-  return `<div class="top"><button class="icon-btn" data-act="tab" data-k="set">←</button><div class="grow" style="padding:0 12px"><h1>Galeria</h1><div class="sub">${nA} de ${ids.length} com ilustração · início e fim de cada movimento · toque para ver animado</div></div></div>${blocks}`;
+  return `<div class="top"><button class="icon-btn" data-act="tab" data-k="more">←</button><div class="grow" style="padding:0 12px"><h1>Galeria</h1><div class="sub">${nA} de ${ids.length} com ilustração · início e fim de cada movimento · toque para ver animado</div></div></div>${blocks}`;
 }
 
 /* aprender */
@@ -413,6 +427,7 @@ function vLearn() {
   <details class="card"><summary>Como estimar o RIR</summary><p class="sm">RIR = repetições corretas que ainda caberiam. Série de 8 que você poderia ter feito 11 → RIR 3. Nas sustentações (isometrias), deixe <b>alguns segundos em reserva</b>. Na dúvida, subestime: no retorno é melhor sobrar do que faltar. Seus números de RIR são estimativas — vão melhorar com o tempo.</p></details>
   <details class="card"><summary>Escápulas: 4 movimentos</summary><ul class="plain sm"><li><b>Protração</b> — afastar (empurrar o chão na flexão)</li><li><b>Retração</b> — aproximar (puxar na remada)</li><li><b>Elevação</b> — subir os ombros (topo da Pike)</li><li><b>Depressão</b> — descer os ombros (sustentação nos fundos, active hang)</li></ul><p class="xs mut">Aprenda a reconhecer cada um; não force posições extremas nem “prenda” as escápulas.</p></details>
   <details class="card"><summary>Semáforo de recuperação</summary><ul class="plain sm"><li>🟢 <b>Verde:</b> recuperado, sem dor articular, treino normal.</li><li>🟡 <b>Amarelo:</b> sono ruim, fadiga alta ou dor muscular que prejudica a técnica → reduza uma série ou regrida.</li><li>🔴 <b>Vermelho:</b> dor aguda/articular, tontura, perda incomum de força, mal-estar → interrompa; procure orientação profissional se persistir.</li></ul><p class="sm">Deload (se a fadiga acumular): reduza as séries em ~30–50% por uma semana, longe da falha. Não é obrigatório a cada 4 semanas.</p></details>
+  ${X.learnHtml ? X.learnHtml() : ''}
   <details class="card"><summary>Como o app sugere progredir</summary><p class="sm">Comece na faixa baixa de repetições, com boa técnica. Quando bater o <b>topo da faixa em todas as séries em duas sessões comparáveis</b>, com boa forma e recuperação, teste uma variação um pouco mais difícil — uma coisa por vez. Exemplo (barra): 6/6/5 → 6/6/6 → 7/6/6 → 7/7/6 → 8/7/7 → 8/8/8. Exemplo, não previsão.</p><p class="sm"><b>Cadeias possíveis</b> (a ordem não é universal): Pike mãos elevadas → chão → pés elevados · flexão inclinada → tradicional → declinada · barra assistida → estrita → com pausa · unilateral no banco → pistola assistida → pistola · joelhos na barra → uma perna estendida → pernas estendidas → L-sit suspenso.</p></details>
   <details class="card"><summary>Por que o plano é assim</summary>${DECISIONS.map(([a, b]) => `<p class="sm"><b>${a}.</b> ${b}</p>`).join('')}<p class="xs mut">As notas do plano são adaptações nossas (feitas com ChatGPT), distintas do que Yvguo e Leo Wang afirmam.</p></details>
   <details class="card"><summary>Fases do plano</summary>${PHASES.map(p => `<p class="sm"><b>${p.n} — ${p.sub}.</b> RIR ${p.rir}. ${p.d}</p>`).join('')}</details>
@@ -436,12 +451,13 @@ function vSet() {
   <div class="card"><h3>Fase atual</h3><p class="xs mut">Você escolhe quando avançar — o app não muda a fase por data.</p>${PHASES.map(p => `<div class="check ${s.phase === p.id ? 'on' : ''}" data-act="phase" data-p="${p.id}"><div class="box">${CHECK}</div><div class="grow"><div class="t" style="text-decoration:none;color:var(--ink)">${p.n} · ${p.sub}</div><div class="xs mut">RIR ${p.rir} · séries ${p.sets}</div></div></div>`).join('')}</div>
   <div class="card"><h3>Meu equipamento</h3><p class="xs mut">Tenho barra fixa reta e elástico. O que não estiver marcado é adaptado ou omitido, nunca improvisado.</p>
    ${tog('dips', 'Barra segura e fixa para fundos', 'Desmarcado: fundos/sustentação são omitidos.')}${tog('lowBar', 'Barra baixa segura para remada invertida', 'Desmarcado: usa remada sentada com elástico.')}</div>
+  ${X.settingsHtml ? X.settingsHtml() : ''}
   <div class="card"><h3>Ilustrações</h3><p class="xs mut">Veja todos os bonequinhos de uma vez (início e fim de cada movimento) para conferir.</p><button class="btn ghost sm" data-act="tab" data-k="gallery">Abrir galeria de ilustrações</button></div>
   <div class="card"><h3>Aparência</h3><div class="seg gap">${[['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Escuro']].map(([k, t]) => `<button class="${s.theme === k ? 'on' : ''}" data-act="theme" data-k="${k}">${t}</button>`).join('')}</div></div>
   <div class="card"><h3>Modo teste</h3><p class="xs mut">Ligado: você pode treinar à vontade no app sem nada ir para o histórico ou a evolução.</p>${tog('test', 'Modo teste ligado', 'Desligue quando for começar a registrar de verdade.')}<button class="btn ghost sm gap" style="color:var(--bad)" data-act="zero">Zerar progresso (mantém ajustes)</button></div>
   <div class="card"><h3>Backup</h3><p class="xs mut">Guarde uma cópia de vez em quando (e para levar os dados a outro aparelho).</p><div class="row gap wrap"><button class="btn ghost sm" data-act="export">Exportar JSON</button><button class="btn ghost sm" data-act="import">Importar</button></div><input type="file" id="imp" accept="application/json" hidden></div>
   <div class="card"><h3>Mais</h3><div class="row wrap gap"><button class="btn ghost sm" data-act="welcome">Rever introdução</button><button class="btn ghost sm" style="color:var(--bad)" data-act="reset">Apagar todos os dados</button></div></div>
-  <p class="xs mut">${DB.logs.length} treinos salvos · v1</p>`;
+  <p class="xs mut">${DB.logs.length} treinos e ${DB.acts.length} atividades salvos · v2</p>`;
 }
 function vWelcome() {
   const s = DB.set;
@@ -460,14 +476,15 @@ function vWelcome() {
 function render(keepScroll = true) {
   const y = window.scrollY;
   const working = UI.tab === 'work';
-  const v = !DB.set.onboarded ? vWelcome() : ({ today: vToday, work: vWork, lib: vLib, prog: vProg, learn: vLearn, set: vSet, gallery: vGallery }[UI.tab] || vToday)();
+  const v = !DB.set.onboarded ? vWelcome() : ({ today: vToday, work: vWork, lib: vLib, prog: vProg, learn: vLearn, set: vSet, gallery: vGallery, more: vMore, ...VIEWS }[UI.tab] || vToday)();
   $('#app').innerHTML = v;
-  $('#tabs').innerHTML = TABS.map(([k, t]) => `<button class="${UI.tab === k || (k === 'today' && working) ? 'on' : ''}" data-act="tab" data-k="${k}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>${t}</button>`).join('');
-  document.querySelector('nav.tabs').style.display = DB.set.onboarded ? '' : 'none';
+  $('#tabs').innerHTML = TABS.map(([k, t]) => `<button class="${(TABGROUP[UI.tab] || UI.tab) === k ? 'on' : ''}" data-act="tab" data-k="${k}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>${t}</button>`).join('');
+  document.querySelector('nav.tabs').style.display = DB.set.onboarded && UI.tab !== 'track' ? '' : 'none';
+  AFTER.forEach(f => { try { f(); } catch (e) {} });
   const th = DB.set.theme; if (th === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', th);
   if (keepScroll) window.scrollTo(0, y);
 }
-const go = (tab) => { UI.tab = tab; render(false); window.scrollTo(0, 0); wake(tab === 'work'); };
+const go = (tab) => { UI.tab = tab; render(false); window.scrollTo(0, 0); wake(tab === 'work' || tab === 'track' || !!(X.keepAwake && X.keepAwake())); };
 
 /* ───────── ações ───────── */
 const A = {
@@ -482,7 +499,6 @@ const A = {
     if (t === 'm') { const m = DB.morning[today()] = DB.morning[today()] || {}; m[k] ? delete m[k] : m[k] = true; } else if (DB.active) { DB.active.checks[d.k] = !DB.active.checks[d.k]; }
     save(); render();
   },
-  walk: d => { const m = +d.m; DB.walks[today()] = m === 0 ? 0 : (DB.walks[today()] || 0) + m; if (!DB.walks[today()]) delete DB.walks[today()]; save(); render(); },
   fview: d => { const cur = UI.fv[d.id] !== undefined ? UI.fv[d.id] : Anim.pref(d.id); UI.fv[d.id] = !cur; if ($('#sheet').classList.contains('show')) exSheet(d.id); else render(); },
   vinc: () => { const a = DB.active; a.val = String((parseInt(a.val) || 0) + 1); save(); const v = $('#val') || $('#hv'); if (v) v.firstChild.textContent = a.val; else render(); },
   vdec: () => { const a = DB.active; a.val = String(Math.max(0, (parseInt(a.val) || 0) - 1)); save(); const v = $('#val') || $('#hv'); if (v) v.firstChild.textContent = a.val; else render(); },
@@ -539,19 +555,20 @@ const A = {
   cancel: () => ask('Descartar este treino?', 'As séries registradas nesta sessão serão perdidas. Não dá para desfazer.', 'Descartar treino', () => { DB.active = null; save(); stopTimer(); UI.tab = 'today'; go('today'); toast('Treino descartado'); }),
   'ask-ok': () => { const f = ASKFN; ASKFN = null; closeSheet(); if (f) f(); },
   cat: d => { UI.libCat = d.k; render(); },
+  pseg: d => { UI.progSeg = d.k; render(); },
   log: d => logSheet(d.id),
   dellog: d => ask('Apagar este treino?', 'Ele sai do histórico e da evolução. Não dá para desfazer.', 'Apagar', () => { DB.logs = DB.logs.filter(l => l.id != d.id); save(); render(); }),
   phase: d => { DB.set.phase = d.p; UI.ab = null; save(); render(); toast('Fase: ' + phase().n); },
   tog: d => { DB.set[d.k] = !DB.set[d.k]; save(); render(); },
   theme: d => { DB.set.theme = d.k; save(); render(); },
   'start-app': () => { DB.set.onboarded = true; save(); UI.tab = 'today'; render(false); },
-  zero: () => ask('Zerar progresso?', 'Apaga treinos, caminhadas e rotina matinal. Seus ajustes ficam. Não dá para desfazer.', 'Zerar progresso', () => { DB.logs = []; DB.morning = {}; DB.walks = {}; DB.active = null; save(); stopTimer(); UI.tab = 'today'; render(false); toast('Progresso zerado'); }),
+  zero: () => ask('Zerar progresso?', 'Apaga treinos, corridas, caminhadas, diário e rotina matinal. Seus ajustes ficam. Não dá para desfazer.', 'Zerar progresso', () => { DB.logs = []; DB.morning = {}; DB.walks = {}; DB.acts = []; DB.notes = []; DB.active = null; save(); stopTimer(); if (window.Store) Store.clearAll(); if (window.CARDIO) { CARDIO.live = null; CARDIO.sum = null; } UI.tab = 'today'; render(false); toast('Progresso zerado'); }),
   welcome: () => { DB.set.onboarded = false; render(false); },
   img: d => { openSheet(`<img src="${d.el.src}" style="width:100%;border-radius:12px" alt=""><button class="btn big gap" data-act="sheet-close">Fechar</button>`); },
   vid: d => { const box = $('#vp'); if (!box) { window.open(`https://www.youtube.com/watch?v=${d.id}&t=${d.t}s`, '_blank'); return; } box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${d.id}?start=${d.t}&autoplay=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Demonstração"></iframe>`; },
   export: () => { const b = new Blob([JSON.stringify(DB, null, 1)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `calistenia-backup-${today()}.json`; a.click(); toast('Backup exportado'); },
   import: () => $('#imp').click(),
-  reset: () => ask('Apagar todos os dados?', 'Treinos e ajustes deste aparelho serão apagados. Considere exportar um backup antes. Não dá para desfazer.', 'Apagar tudo', () => { DB = defaults(); save(); UI.tab = 'today'; render(false); }),
+  reset: () => ask('Apagar todos os dados?', 'Treinos e ajustes deste aparelho serão apagados. Considere exportar um backup antes. Não dá para desfazer.', 'Apagar tudo', () => { DB = defaults(); save(); UI.tab = 'today'; if (window.Store) Store.clearAll(); if (window.CARDIO) { CARDIO.live = null; CARDIO.sum = null; } render(false); }),
   't-add': () => { if (TM) { TM.end += 15000; TM.fin = false; tick(); } },
   't-skip': stopTimer,
 };
@@ -573,13 +590,15 @@ document.addEventListener('change', e => {
   if (t.dataset.var !== undefined && DB.active) { DB.active.ex[t.dataset.var].variant = t.value; save(); }
   else if (t.dataset.in && DB.active) { const [i, j, f] = t.dataset.in.split(','); DB.active.ex[i].sets[j][f] = t.value; save(); }
   else if (t.id === 'progex') { UI.progEx = t.value; render(); }
-  else if (t.id === 'imp') { const f = t.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const d = JSON.parse(r.result); if (!d.v || !Array.isArray(d.logs)) throw 0; ask('Importar backup?', 'Substitui os dados atuais pelos do arquivo.', 'Importar', () => { DB = { ...defaults(), ...d, set: { ...defaults().set, ...d.set } }; save(); render(); toast('Backup importado'); }); return; } catch (x) { toast('Arquivo inválido'); } }; r.readAsText(f); }
+  else if (t.id === 'imp') { const f = t.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const d = JSON.parse(r.result); if (!d.v || !Array.isArray(d.logs)) throw 0; ask('Importar backup?', 'Substitui os dados atuais pelos do arquivo.', 'Importar', () => { DB = normDB(d); save(); render(); toast('Backup importado'); }); return; } catch (x) { toast('Arquivo inválido'); } }; r.readAsText(f); }
 });
 setInterval(() => { const el = $('#el'); if (el && DB.active) el.textContent = mmss((Date.now() - DB.active.start) / 1000); }, 1000);
 setInterval(() => { if (UI.hold && UI.hold.run) { const h = $('#hv'); const sec = Math.floor((Date.now() - UI.hold.t0) / 1000); if (h) h.firstChild.textContent = sec; const a = DB.active, e = a && buildSteps(a)[a.step]; const hi = e && e.t === 'ex' ? parseInt(String(a.ex[e.i].reps).split(/[–-]/).pop()) : 0; if (hi && sec >= hi && !UI.hold.beeped) { UI.hold.beeped = true; beep(); } } }, 250);
 document.addEventListener('toggle', e => { const d = e.target; if (d.dataset && d.dataset.d) UI.open[d.dataset.d] = d.open; }, true);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && UI.tab === 'work') wake(true); tick(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && (UI.tab === 'work' || UI.tab === 'track')) wake(true); tick(); });
 
+window.APP = { get DB() { return DB; }, set DB(v) { DB = v; }, UI, A, VIEWS, ext: X, after: AFTER, save, render, go, esc, $, pad, ymd, today, fmtDate, weekStart, mmss, toast, ask, openSheet, closeSheet, beep, wake, startTimer, CHECK, demo, thumb, tile, phase, isRead, ago, keepAwake: null };
+(window.__ext || []).forEach(f => { try { f(window.APP); } catch (e) { console.error('extensão', e); } });
 if (DB.active) UI.tab = 'work';
 render(false);
 if (UI.tab === 'work') wake(true);

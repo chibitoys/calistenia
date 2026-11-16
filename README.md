@@ -1,7 +1,5 @@
 # Calistenia — meu treino
 
-App pessoal de treino de calistenia (PWA): treino guiado passo a passo, biblioteca com ilustrações animadas, descanso e cronômetros, registro e evolução. Funciona offline depois do primeiro acesso; os dados ficam só no aparelho (localStorage).
+App pessoal (PWA): treino de calistenia guiado, corrida e caminhada, diário, ilustrações animadas. Funciona offline depois do primeiro acesso; os dados ficam só no aparelho.
 
-Sem dependências nem build: arquivos estáticos (`index.html`, `js/`, `css/`).
-
-Os vídeos dos autores (Yvguo e Leo Wang) são abertos no YouTube; nenhum material deles é copiado aqui.
+Sem dependências nem build. Os vídeos dos autores abrem no YouTube; nenhum material deles é copiado aqui.

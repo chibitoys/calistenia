@@ -387,13 +387,13 @@ const MORNING = [
 ];
 
 const PHASES = [
-  { id: 'w1', n: 'Semana 1', sub: 'Readaptação', rir: '4–5', sets: '1–2', cardio: '15–25 min · 3–4 dias',
+  { id: 'w1', n: 'Semana 1', sub: 'Readaptação', rir: '4–5', sets: '1–2',
     d: 'Reaprender os movimentos, escolher regressões, voltar à regularidade. Sem testes de máximo. Prefira intercalar treino com descanso ou caminhada (ex.: dias 1, 3 e 5).' },
-  { id: 'w2', n: 'Semana 2', sub: 'Readaptação', rir: '3–4', sets: '2', cardio: '15–25 min · 3–4 dias',
+  { id: 'w2', n: 'Semana 2', sub: 'Readaptação', rir: '3–4', sets: '2',
     d: 'Se estiver recuperado da semana 1. Duas séries por exercício, ainda longe da falha.' },
-  { id: 'rec', n: 'Semanas 3–6', sub: 'Reconstrução', rir: '2–3 (B: 3–4)', sets: 'conforme ficha', cardio: '20–30 min · 4–5 dias',
+  { id: 'rec', n: 'Semanas 3–6', sub: 'Reconstrução', rir: '2–3 (B: 3–4)', sets: 'conforme ficha',
     d: 'Sessões A e B alternando. Cada padrão de movimento aparece 2× por semana.' },
-  { id: 'str', n: 'Semana 7+', sub: 'Força + volume', rir: '1–3', sets: 'conforme ficha', cardio: '20–30 min · 4–5 dias',
+  { id: 'str', n: 'Semana 7+', sub: 'Força + volume', rir: '1–3', sets: 'conforme ficha',
     d: 'Só com técnica e recuperação consolidadas. Em um padrão por sessão, troque 3 séries por 2×4–6 mais difíceis (RIR 2, 3–4 min) + 1×6–10 mais fácil. Não some ao volume existente.' },
 ];
 
